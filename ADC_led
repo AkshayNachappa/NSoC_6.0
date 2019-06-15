@@ -1,0 +1,58 @@
+// PIC16F877A Configuration Bit Settings
+
+// 'C' source line config statements
+
+// CONFIG
+#pragma config FOSC = HS        // Oscillator Selection bits (HS oscillator)
+#pragma config WDTE = OFF       // Watchdog Timer Enable bit (WDT disabled)
+#pragma config PWRTE = OFF      // Power-up Timer Enable bit (PWRT disabled)
+#pragma config BOREN = ON       // Brown-out Reset Enable bit (BOR enabled)
+#pragma config LVP = OFF        // Low-Voltage (Single-Supply) In-Circuit Serial Programming Enable bit (RB3 is digital I/O, HV on MCLR must be used for programming)
+#pragma config CPD = OFF        // Data EEPROM Memory Code Protection bit (Data EEPROM code protection off)
+#pragma config WRT = OFF        // Flash Program Memory Write Enable bits (Write protection off; all program memory may be written to by EECON control)
+#pragma config CP = OFF         // Flash Program Memory Code Protection bit (Code protection off)
+
+// #pragma config statements should precede project file includes.
+// Use project enums instead of #define for ON and OFF.
+
+#include <xc.h>
+
+
+#define _XTAL_FREQ 20000000
+
+void ADC_Init()
+{
+  ADCON0 = 0x41; //ADC Module Turned ON and Clock is selected
+  ADCON1 = 0xC0; //All pins as Analog Input
+                 //With reference voltages VDD and VSS
+}
+
+unsigned int ADC_Read(unsigned char channel)
+{
+  if(channel > 7) //If Invalid channel selected 
+    return 0;     //Return 0
+
+  ADCON0 &= 0xC5; //Clearing the Channel Selection Bits
+  ADCON0 |= channel<<3; //Setting the required Bits
+  __delay_ms(2); //Acquisition time to charge hold capacitor
+  GO_nDONE = 1; //Initializes A/D Conversion
+  while(GO_nDONE); //Wait for A/D Conversion to complete
+  return ((ADRESH<<8)+ADRESL); //Returns Result
+}
+
+void main()
+{
+  unsigned int a;
+  TRISB = 0x00; //PORTB as output
+  TRISC = 0x00; //PORTC as output
+  TRISA = 0xFF; //PORTA as input
+  ADC_Init(); //Initializes ADC Module
+
+  do
+  {
+    a = ADC_Read(0); //Reading Analog Channel 0
+    PORTB = a; //Lower 8 bits to PORTB
+    PORTC = a>>8; //Higher 2 bits to PORTC
+    __delay_ms(100); //Delay
+  }while(1); //Infinite Loop
+}
